@@ -1,0 +1,4 @@
+# Etat des VM propre a chaque PC
+.vagrant/
+# Secrets du labo (mots de passe, cle SSH) : jamais sur Git
+.lab-secrets/
