@@ -145,9 +145,9 @@ nmap -Pn 192.168.56.10
 
 → Seul le port **443** est ouvert : aucune interface d'administration n'est exposée.
 
-## 3 bis. Démos du Jour 3 — Résilience et conteneurs (4 minutes)
+## 3 bis. Démos du Jour 3 - Résilience et conteneurs (4 minutes)
 
-### Démo 6 — Le conteneur de l'API est durci
+### Démo 6 - Le conteneur de l'API est durci
 
 ```
 vagrant ssh z2-app -c "sudo verif-conteneur"
@@ -158,7 +158,7 @@ vagrant ssh z2-app -c "sudo verif-conteneur"
 
 > « Même si l'API est compromise, l'attaquant n'est pas root et ne peut rien modifier dans le conteneur. »
 
-### Démo 7 — Le scan de l'image (comme dans une CI/CD)
+### Démo 7 - Le scan de l'image (comme dans une CI/CD)
 
 ```
 vagrant ssh z2-app -c "sudo scan-image"
@@ -168,7 +168,7 @@ vagrant ssh z2-app -c "sudo scan-image"
 
 > « En production, une CVE critique bloque le déploiement, et on passe sur une image minimale (distroless) pour réduire la surface. »
 
-### Démo 8 — Auto-réparation : le service redémarre seul après une panne
+### Démo 8 - Auto-réparation : le service redémarre seul après une panne
 
 ```
 vagrant ssh z2-app -c "sudo simuler-panne"
@@ -178,7 +178,7 @@ vagrant ssh z2-app -c "sudo simuler-panne"
 
 > « Aucune intervention humaine. En production, Kubernetes fait la même chose, avec 3 réplicas sur 3 zones. »
 
-### Démo 9 — Rançongiciel simulé : perte des données, puis restauration depuis une copie immuable
+### Démo 9 - Rançongiciel simulé : perte des données, puis restauration depuis une copie immuable
 
 **1. L'incident** : on efface les patients.
 ```
