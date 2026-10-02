@@ -1,4 +1,4 @@
-# Labo StartupMed — Segmentation & matrice de flux
+# Labo StartupMed - Segmentation & matrice de flux
 
 Ce labo reproduit l'architecture de l'Atelier 2 avec 6 VM Debian et une seule commande.
 Le pare-feu applique la matrice de flux : tout ce qui n'est pas autorisé est bloqué et journalisé.
@@ -35,7 +35,7 @@ RAM utilisée : environ 3,5 Go.
 vagrant status
 ```
 
-## 2. Préparer la démo (5 minutes avant l'oral)
+## 2. Préparer la démo 
 
 **a. Enregistrer le MFA sur votre téléphone** (une seule fois) :
 
