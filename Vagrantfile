@@ -81,10 +81,12 @@ Vagrant.configure("2") do |config|
 
   # ---- Z2 : Applicative — API de demo -------------------------------------
   config.vm.define "z2-app" do |m|
-    zone_vm.call(m, "z2-app", "10.10.2.10", "10.10.2.1", "z2-app", 768)
+    zone_vm.call(m, "z2-app", "10.10.2.10", "10.10.2.1", "z2-app", 1024)
     m.vm.provision "file", source: KEY_PUB, destination: "/tmp/admin_id_rsa.pub"
     m.vm.provision "shell", path: "scripts/admin-cible.sh"
     m.vm.provision "shell", path: "scripts/z2-app.sh", args: [DB_PASSWORD]
+    # Jour 3 : conteneur durci + scan Trivy + redemarrage automatique
+    m.vm.provision "conteneur", type: "shell", path: "scripts/z2-conteneur.sh"
   end
 
   # ---- Z3 : Donnees de sante — PostgreSQL (TLS) ---------------------------
@@ -93,6 +95,8 @@ Vagrant.configure("2") do |config|
     m.vm.provision "file", source: KEY_PUB, destination: "/tmp/admin_id_rsa.pub"
     m.vm.provision "shell", path: "scripts/admin-cible.sh"
     m.vm.provision "shell", path: "scripts/z3-db.sh", args: [DB_PASSWORD]
+    # Jour 3 : sauvegarde horaire (RPO 1 h)
+    m.vm.provision "sauvegarde", type: "shell", path: "scripts/z3-sauvegarde.sh"
   end
 
   # ---- Z4 : Administration — bastion SSH + MFA (TOTP) + logs centralises --
@@ -100,6 +104,8 @@ Vagrant.configure("2") do |config|
     zone_vm.call(m, "z4-bastion", "10.10.4.10", "10.10.4.1", "z4-admin", 512)
     m.vm.provision "file", source: KEY_PRIV, destination: "/tmp/admin_id_rsa"
     m.vm.provision "shell", path: "scripts/z4-bastion.sh", args: [ADMIN_PASSWORD]
+    # Jour 3 : copies immuables des sauvegardes + restauration en une commande
+    m.vm.provision "sauvegarde", type: "shell", path: "scripts/z4-sauvegarde.sh"
   end
 
   # ---- Z5 : Siege — poste salarie -----------------------------------------

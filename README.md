@@ -145,6 +145,72 @@ nmap -Pn 192.168.56.10
 
 → Seul le port **443** est ouvert : aucune interface d'administration n'est exposée.
 
+## 3 bis. Démos du Jour 3 — Résilience et conteneurs (4 minutes)
+
+### Démo 6 — Le conteneur de l'API est durci
+
+```
+vagrant ssh z2-app -c "sudo verif-conteneur"
+```
+
+→ Utilisateur `10001` (non root), système de fichiers en lecture seule, toutes les capacités Linux retirées, `no-new-privileges`, mémoire limitée, état `healthy`.
+→ La tentative d'écriture dans l'image échoue : `Read-only file system`.
+
+> « Même si l'API est compromise, l'attaquant n'est pas root et ne peut rien modifier dans le conteneur. »
+
+### Démo 7 — Le scan de l'image (comme dans une CI/CD)
+
+```
+vagrant ssh z2-app -c "sudo scan-image"
+```
+
+→ Trivy liste les vulnérabilités HIGH/CRITICAL : **0 dans le code Python de l'API**, des dizaines dans l'image de base Debian.
+
+> « En production, une CVE critique bloque le déploiement, et on passe sur une image minimale (distroless) pour réduire la surface. »
+
+### Démo 8 — Auto-réparation : le service redémarre seul après une panne
+
+```
+vagrant ssh z2-app -c "sudo simuler-panne"
+```
+
+→ Le processus de l'API est tué brutalement. Le conteneur redémarre en environ 2 secondes, et le compteur de redémarrages passe à 1. Rechargez https://192.168.56.10 : le site fonctionne.
+
+> « Aucune intervention humaine. En production, Kubernetes fait la même chose, avec 3 réplicas sur 3 zones. »
+
+### Démo 9 — Rançongiciel simulé : perte des données, puis restauration depuis une copie immuable
+
+**1. L'incident** : on efface les patients.
+```
+vagrant ssh z3-db -c "sudo -u postgres psql startupmed -c 'DELETE FROM patients;'"
+```
+→ Rechargez https://192.168.56.10 : le tableau est vide.
+
+**2. Les sauvegardes sont intactes et indestructibles** :
+```
+vagrant ssh z4-bastion -c "sudo voir-sauvegardes"
+```
+→ Chaque copie porte l'attribut `i` (immuable). Essayez de l'effacer, même en root :
+```
+vagrant ssh z4-bastion -c "sudo rm /srv/sauvegardes/*.dump"
+```
+→ `Operation not permitted`.
+
+**3. La restauration, chronométrée** :
+```
+vagrant ssh z4-bastion -c "sudo restaurer-bdd"
+```
+→ `Restauration terminee en 1 s (objectif RTO : 4 h, RPO : 1 h)`. Rechargez le site : les patients sont revenus.
+
+> « Sauvegarde toutes les heures (RPO 1 h), copiée hors de la zone données, verrouillée : même un admin compromis ne peut pas l'effacer. Et la restauration est testée, pas supposée : un PCA non testé n'existe pas. »
+
+| Démo | Notion du Jour 3 |
+| --- | --- |
+| 6 | Conteneur non root, lecture seule, sans capacités |
+| 7 | Scan des images (Trivy) |
+| 8 | Redondance applicative, auto-réparation |
+| 9 | Sauvegardes immuables, RPO, test de restauration mesuré contre le RTO |
+
 ## 4. Correspondance avec la matrice de flux (Atelier 2)
 
 | Flux | Labo | Port labo | Différence avec la cible de production |

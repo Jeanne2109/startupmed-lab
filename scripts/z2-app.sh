@@ -84,8 +84,9 @@ def api_patients():
 
 
 if __name__ == "__main__":
+    tls = os.environ.get("TLS_DIR", "/etc/startupmed")
     app.run(host="0.0.0.0", port=8443,
-            ssl_context=("/etc/startupmed/app.crt", "/etc/startupmed/app.key"))
+            ssl_context=(f"{tls}/app.crt", f"{tls}/app.key"))
 EOF
 
 cat > /etc/systemd/system/startupmed-api.service <<'EOF'
