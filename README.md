@@ -211,6 +211,63 @@ vagrant ssh z4-bastion -c "sudo restaurer-bdd"
 | 8 | Redondance applicative, auto-réparation |
 | 9 | Sauvegardes immuables, RPO, test de restauration mesuré contre le RTO |
 
+## 3 ter. Démos SIEM - le SIEM remonte 5 scénarios d'attaque
+
+Le SIEM (sur z4-bastion) collecte les journaux de toutes les zones et du pare-feu, puis
+un moteur de détection (`siem-detect`) leve des alertes avec une criticité.
+
+**Préparer trois fenêtres** :
+
+| Fenêtre | Commande | Rôle |
+| --- | --- | --- |
+| A - SIEM | `vagrant ssh z4-bastion` puis `sudo siem-surveiller` | Détection en continu (rafraîchie toutes les 5 s) |
+| B - Attaquant interne | `vagrant ssh z5-poste` | Attaques depuis le poste du siège |
+| C - Attaquant externe | PowerShell sur votre PC (= Internet) | Attaques venues d'Internet |
+
+Les attaques se répartissent selon d'où vient l'attaquant : le poste interne (compromis par
+phishing) et Internet (compte volé, scan externe).
+
+**Fenêtre B - attaques internes** :
+
+```
+siem-attaques tout
+```
+
+(brute force sur le bastion + élévation de privilège ; ou `siem-attaques bruteforce` / `privilege`)
+
+**Fenêtre C - attaques Internet** (PowerShell, une ligne chacune) :
+
+```
+1..20 | % { curl.exe -k -s -o NUL --max-time 5 "https://192.168.56.10/patients?id=$_" }
+```
+```
+curl.exe -k "https://192.168.56.10/patients?id=1%27%20OR%20%271%27=%271"
+```
+```
+Test-NetConnection 192.168.56.10 -Port 3389
+```
+
+Puis, fenêtre A (ou `sudo siem-detect` pour un scan unique), le SIEM affiche :
+
+| # | Attaque | D'où | Ce que le SIEM remonte | Criticité |
+| --- | --- | --- | --- | --- |
+| 1 | **Brute force mot de passe** | poste (B) | « N échecs d'authentification depuis 10.10.5.10 » | CRITIQUE |
+| 2 | **Exfiltration de données** | Internet (C) | « N lectures de dossiers patients en rafale - lecture massive suspecte » | CRITIQUE |
+| 3 | **RDP depuis l'extérieur** | Internet (C) | « tentative RDP depuis l'IP externe … - bloquée par le pare-feu » | CRITIQUE |
+| 4 | **Injection SQL** | Internet (C) | « requête refusée par le WAF (SQL Injection Attack Detected) » | HAUTE |
+| 5 | **Élévation de privilège** | poste (B) | « le compte standard 'stagiaire' a tenté d'obtenir des droits admin » | CRITIQUE |
+
+**Les alertes sont horodatées et conservées** :
+
+```
+vagrant ssh z4-bastion -c "sudo cat /var/log/central/ALERTES.log"
+```
+
+> Phrase pour l'oral : « Le SIEM ne se contente pas de stocker les journaux : il corrèle et
+> alerte. Un échec isolé est normal, mais 5 échecs de suite depuis le même poste, une lecture
+> massive de dossiers, un RDP venu d'Internet, une injection SQL ou un stagiaire qui tente
+> `sudo` : chacun déclenche une alerte classée par criticité, envoyée à l'astreinte puis au SOC. »
+
 ## 4. Correspondance avec la matrice de flux (Atelier 2)
 
 | Flux | Labo | Port labo | Différence avec la cible de production |

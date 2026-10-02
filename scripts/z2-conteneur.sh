@@ -4,8 +4,11 @@
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
+# Garde-fou : s'assurer que la resolution DNS fonctionne (NAT VirtualBox parfois capricieux)
+getent hosts deb.debian.org >/dev/null 2>&1 || echo 'nameserver 8.8.8.8' > /etc/resolv.conf
+
 apt-get update -q
-apt-get install -y -q docker.io
+command -v docker >/dev/null 2>&1 || apt-get install -y -q docker.io
 
 # ---- Image : utilisateur non privilegie, aucun secret dedans ------------------
 install -d -m 0755 /opt/startupmed/image
@@ -42,6 +45,10 @@ docker run -d --name startupmed-api \
   --cap-drop ALL \
   --security-opt no-new-privileges \
   --memory 256m --pids-limit 100 \
+  --log-driver syslog \
+  --log-opt syslog-address=tcp://10.10.4.10:514 \
+  --log-opt syslog-facility=local1 \
+  --log-opt tag=api \
   startupmed-api:1.0 > /dev/null
 
 # ---- Raccourcis pour la demo ----------------------------------------------------

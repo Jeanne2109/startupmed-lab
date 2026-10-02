@@ -69,6 +69,8 @@ Vagrant.configure("2") do |config|
     m.vm.provider("virtualbox") { |vb| vb.memory = 512; vb.name = "startupmed-fw" }
     m.vm.provision "file", source: "fw/nftables.conf", destination: "/tmp/nftables.conf"
     m.vm.provision "shell", path: "scripts/fw.sh"
+    # SIEM : transmet les blocages du pare-feu au SIEM (Z4)
+    m.vm.provision "siem", type: "shell", path: "scripts/fw-siem.sh"
   end
 
   # ---- Z1 : DMZ — WAF (Apache + ModSecurity + OWASP CRS) ------------------
@@ -106,6 +108,8 @@ Vagrant.configure("2") do |config|
     m.vm.provision "shell", path: "scripts/z4-bastion.sh", args: [ADMIN_PASSWORD]
     # Jour 3 : copies immuables des sauvegardes + restauration en une commande
     m.vm.provision "sauvegarde", type: "shell", path: "scripts/z4-sauvegarde.sh"
+    # SIEM : moteur de detection des 4 scenarios d'attaque
+    m.vm.provision "siem", type: "shell", path: "scripts/z4-siem.sh"
   end
 
   # ---- Z5 : Siege — poste salarie -----------------------------------------
