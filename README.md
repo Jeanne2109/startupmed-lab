@@ -63,14 +63,14 @@ type .lab-secrets\admin_password
 
 ## 3. Scénario de démo (5 minutes)
 
-### Démo 1 — Le chemin légitime fonctionne (F1 → F2 → F3)
+### Démo 1 - Le chemin légitime fonctionne (F1 → F2 → F3)
 Dans le navigateur de votre PC : **https://192.168.56.10**
 → Acceptez l'avertissement de certificat (certificat de labo).
 → La page affiche les patients (fictifs) : Internet → WAF → API → base de données.
 
 > « Le patient ne parle qu'au WAF. Le WAF ne parle qu'à l'API. Seule l'API parle à la base. »
 
-### Démo 2 — Le WAF bloque une injection SQL
+### Démo 2 - Le WAF bloque une injection SQL
 Dans PowerShell sur votre PC (attention : `curl.exe`, pas `curl`) :
 
 ```
@@ -80,7 +80,7 @@ curl.exe -k -i "https://192.168.56.10/patients?id=1%27%20OR%20%271%27=%271"
 → Réponse **403 Forbidden** : ModSecurity a bloqué `1' OR '1'='1`.
 → Fenêtre 3 : la ligne ModSecurity apparaît dans les logs centralisés (`z1-dmz.log`).
 
-### Démo 3 — Le siège ne peut pas atteindre les données (F15 bloqué)
+### Démo 3 - Le siège ne peut pas atteindre les données (F15 bloqué)
 Fenêtre 2 (z5-poste) :
 
 ```
@@ -98,7 +98,7 @@ Pour comparer, le même test depuis l'API fonctionne (F3 autorisé) :
 vagrant ssh z2-app -c "nc -zv -w 3 10.10.3.10 5432"
 ```
 
-### Démo 4 — L'administration passe obligatoirement par le bastion avec MFA
+### Démo 4 - L'administration passe obligatoirement par le bastion avec MFA
 Fenêtre 2 (z5-poste), tentative d'accès direct :
 
 ```
@@ -124,7 +124,7 @@ ssh z3-db
 
 > « Pas de MFA, pas d'admin. Et chaque connexion est journalisée de façon centralisée. »
 
-### Démo 5 — La matrice de flux EST la configuration
+### Démo 5 - La matrice de flux EST la configuration
 Fenêtre 1 : `Ctrl+C`, puis :
 
 ```
@@ -136,7 +136,7 @@ La dernière ligne `BLOQUE-NON-DOCUMENTE` refuse tout le reste.
 
 > « Un flux non documenté est un flux suspect : ici il est littéralement refusé. »
 
-### Bonus — Internet ne voit que le port 443
+### Bonus - Internet ne voit que le port 443
 Si Nmap est installé sur votre PC :
 
 ```
