@@ -1,7 +1,6 @@
 #!/bin/bash
-# Z4 - SIEM : moteur de detection des 4 scenarios d'attaque a partir des journaux centralises
-#   1. Brute force sur mot de passe   2. Exfiltration de donnees
-#   3. RDP depuis une IP externe       4. Injection SQL
+# Z4 - SIEM : moteur de detection des scenarios d'attaque a partir des journaux centralises
+#   1. Brute force   2. Exfiltration   3. RDP externe   4. Injection SQL   5. Elevation de privilege
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
@@ -25,19 +24,30 @@ EOF
 cat > /usr/local/bin/siem-detect <<'SCRIPT'
 #!/bin/bash
 # Analyse les journaux centralises (Z1 a Z5 + pare-feu) et leve des alertes.
+# Chaque alerte porte l'HEURE REELLE du dernier evenement detecte (pas l'heure du scan).
 source /etc/siem-regles.conf
 DIR=/var/log/central
 JOURNAL_ALERTES="$DIR/ALERTES.log"
-# Sources : journaux distants + journal local d'authentification du bastion
 SRC=$(ls "$DIR"/*.log 2>/dev/null | grep -v ALERTES || true)
 AUTH=/var/log/auth.log
 
 bleu=$'\e[36m'; rouge=$'\e[31m'; jaune=$'\e[33m'; vert=$'\e[32m'; gras=$'\e[1m'; raz=$'\e[0m'
-alerte() { # severite  regle  details
-  local h; h=$(date '+%Y-%m-%d %H:%M:%S')
+
+# Heure reelle du dernier evenement correspondant au motif (converti en heure locale)
+dernier_ts() {
+  local ligne champ h
+  ligne=$(tail -n "$LIGNES" $SRC "$AUTH" 2>/dev/null | grep -hiE "$1" | tail -n 1)
+  [ -z "$ligne" ] && { date '+%Y-%m-%d %H:%M:%S'; return; }
+  champ=$(echo "$ligne" | awk '{print $1}')
+  h=$(date -d "$champ" '+%Y-%m-%d %H:%M:%S' 2>/dev/null)
+  [ -z "$h" ] && h=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "$h"
+}
+
+alerte() { # severite  regle  details  heure
   local coul="$jaune"; [ "$1" = "CRITIQUE" ] && coul="$rouge"
-  printf "%s[%s]%s %s%-8s%s %s\n" "$bleu" "$h" "$raz" "$coul$gras" "$1" "$raz" "$2 : $3"
-  echo "$h [$1] $2 : $3" >> "$JOURNAL_ALERTES"
+  printf "%s[%s]%s %s%-8s%s %s\n" "$bleu" "$4" "$raz" "$coul$gras" "$1" "$raz" "$2 : $3"
+  echo "$4 [$1] $2 : $3" >> "$JOURNAL_ALERTES"
 }
 
 echo "${gras}=== SIEM StartupMed - analyse des journaux ===${raz}"
@@ -52,7 +62,8 @@ mapfile -t bf < <(
 for ligne in "${bf[@]}"; do
   n=$(echo "$ligne" | awk '{print $1}'); ip=$(echo "$ligne" | awk '{print $2}')
   if [ "${n:-0}" -ge "$SEUIL_BRUTEFORCE" ]; then
-    alerte CRITIQUE "Brute force mot de passe" "$n echecs d'authentification depuis $ip (seuil $SEUIL_BRUTEFORCE)"
+    h=$(dernier_ts "(Failed password|authentication failure).*$ip|from $ip")
+    alerte CRITIQUE "Brute force mot de passe" "$n echecs d'authentification depuis $ip (seuil $SEUIL_BRUTEFORCE)" "$h"
     alertes=$((alertes+1))
   fi
 done
@@ -60,12 +71,13 @@ done
 # --- 2. EXFILTRATION : lecture massive de dossiers patients via l'API ---
 n=$(tail -n "$LIGNES" $SRC 2>/dev/null | grep -hE "GET /patients" | wc -l)
 if [ "${n:-0}" -ge "$SEUIL_EXFILTRATION" ]; then
-  alerte CRITIQUE "Exfiltration de donnees" "$n lectures de dossiers patients en rafale (seuil $SEUIL_EXFILTRATION) - lecture massive suspecte"
+  h=$(dernier_ts "GET /patients")
+  alerte CRITIQUE "Exfiltration de donnees" "$n lectures de dossiers patients en rafale (seuil $SEUIL_EXFILTRATION) - lecture massive suspecte" "$h"
   alertes=$((alertes+1))
 fi
-# Suppression massive de dossiers (rancongiciel / sabotage)
 if tail -n "$LIGNES" $SRC 2>/dev/null | grep -qiE "DELETE FROM patients"; then
-  alerte CRITIQUE "Exfiltration de donnees" "suppression de dossiers patients detectee dans la base"
+  h=$(dernier_ts "DELETE FROM patients")
+  alerte CRITIQUE "Exfiltration de donnees" "suppression de dossiers patients detectee dans la base" "$h"
   alertes=$((alertes+1))
 fi
 
@@ -76,24 +88,24 @@ mapfile -t rdp < <(
 )
 for ligne in "${rdp[@]}"; do
   n=$(echo "$ligne" | awk '{print $1}'); ip=$(echo "$ligne" | awk -F= '{print $2}')
-  alerte CRITIQUE "RDP depuis l'exterieur" "$n tentative(s) RDP (port 3389) depuis l'IP externe $ip - bloquee(s) par le pare-feu"
+  h=$(dernier_ts "DPT=3389")
+  alerte CRITIQUE "RDP depuis l'exterieur" "$n tentative(s) RDP (port 3389) depuis l'IP externe $ip - bloquee(s) par le pare-feu" "$h"
   alertes=$((alertes+1))
 done
 
 # --- 4. INJECTION SQL : bloquee par le WAF (ModSecurity, regles OWASP 942xxx) ---
-# On compte les requetes effectivement refusees (une ligne "Access denied" par requete)
 n=$(tail -n "$LIGNES" $SRC 2>/dev/null | grep -hcE "ModSecurity: Access denied")
 if [ "${n:-0}" -ge 1 ]; then
-  # Message prioritaire : une regle SQL si presente, sinon la premiere alerte ModSecurity
   ex=$(tail -n "$LIGNES" $SRC 2>/dev/null | grep -hE "ModSecurity" | grep -iE "SQL" | \
        grep -oE "\[msg \"[^\"]+\"" | head -n 1 | sed 's/\[msg "//; s/"$//')
   [ -z "$ex" ] && ex=$(tail -n "$LIGNES" $SRC 2>/dev/null | grep -hE "ModSecurity" | \
        grep -oE "\[msg \"[^\"]+\"" | head -n 1 | sed 's/\[msg "//; s/"$//')
-  alerte HAUTE "Injection SQL / attaque web" "$n requete(s) refusee(s) par le WAF ${ex:+(}${ex}${ex:+)}"
+  h=$(dernier_ts "ModSecurity: Access denied")
+  alerte HAUTE "Injection SQL / attaque web" "$n requete(s) refusee(s) par le WAF ${ex:+(}${ex}${ex:+)}" "$h"
   alertes=$((alertes+1))
 fi
 
-# --- 5. ELEVATION DE PRIVILEGE : un utilisateur standard tente d'obtenir des droits admin ---
+# --- 5. ELEVATION DE PRIVILEGE : un compte standard tente d'obtenir des droits admin ---
 mapfile -t priv < <(
   tail -n "$LIGNES" $SRC "$AUTH" 2>/dev/null | \
   grep -hiE "not in the sudoers|user NOT in sudoers|added to group .?sudo|usermod.*(-aG|sudo|wheel)" | \
@@ -102,7 +114,8 @@ mapfile -t priv < <(
 for ligne in "${priv[@]}"; do
   n=$(echo "$ligne" | awk '{print $1}'); u=$(echo "$ligne" | awk '{print $2}')
   [ -z "${u:-}" ] && continue
-  alerte CRITIQUE "Elevation de privilege" "le compte standard '$u' a tente d'obtenir des droits admin (sudo refuse) - $n evenement(s)"
+  h=$(dernier_ts "sudo:[[:space:]]+$u")
+  alerte CRITIQUE "Elevation de privilege" "le compte standard '$u' a tente d'obtenir des droits admin (sudo refuse) - $n evenement(s)" "$h"
   alertes=$((alertes+1))
 done
 
@@ -110,7 +123,7 @@ echo
 if [ "$alertes" -eq 0 ]; then
   echo "${vert}Aucune alerte sur la periode analysee.${raz}"
 else
-  echo "${rouge}${gras}$alertes alerte(s) - voir $JOURNAL_ALERTES${raz}"
+  echo "${rouge}${gras}$alertes alerte(s) - horodatees a l'heure reelle de l'attaque - voir $JOURNAL_ALERTES${raz}"
 fi
 SCRIPT
 chmod +x /usr/local/bin/siem-detect

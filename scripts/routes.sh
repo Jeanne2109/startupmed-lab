@@ -5,3 +5,6 @@ set -euo pipefail
 GW="$1"
 ip route replace 10.10.0.0/16 via "$GW"
 ip route replace 192.168.56.0/24 via "$GW"
+
+# Heure locale (Paris) pour que les journaux et alertes soient a la bonne heure
+timedatectl set-timezone Europe/Paris 2>/dev/null || true

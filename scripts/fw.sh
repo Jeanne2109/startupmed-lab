@@ -6,6 +6,9 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
 apt-get install -y -q nftables tcpdump
 
+# Heure locale (Paris) pour l'horodatage des blocages
+timedatectl set-timezone Europe/Paris 2>/dev/null || true
+
 # Activer le routage entre les zones
 echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-routeur.conf
 sysctl --system > /dev/null
