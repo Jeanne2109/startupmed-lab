@@ -129,4 +129,16 @@ done
 SCRIPT
 chmod +x /usr/local/bin/siem-surveiller
 
-echo "[z4-bastion] Moteur de detection SIEM installe (siem-detect, siem-surveiller)."
+# ---------------------------------------------------------------------------
+# Remise a zero des journaux : pour demarrer une demonstration propre
+# ---------------------------------------------------------------------------
+cat > /usr/local/bin/siem-reset <<'SCRIPT'
+#!/bin/bash
+# Vide les journaux centralises et le journal d'alertes (demo propre).
+for f in /var/log/central/*.log; do : > "$f" 2>/dev/null; done
+: > /var/log/auth.log 2>/dev/null
+echo "Journaux SIEM remis a zero. Lancez les attaques, puis siem-detect."
+SCRIPT
+chmod +x /usr/local/bin/siem-reset
+
+echo "[z4-bastion] Moteur de detection SIEM installe (siem-detect, siem-surveiller, siem-reset)."

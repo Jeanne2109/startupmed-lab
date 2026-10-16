@@ -45,11 +45,27 @@ docker run -d --name startupmed-api \
   --cap-drop ALL \
   --security-opt no-new-privileges \
   --memory 256m --pids-limit 100 \
-  --log-driver syslog \
-  --log-opt syslog-address=tcp://10.10.4.10:514 \
-  --log-opt syslog-facility=local1 \
-  --log-opt tag=api \
   startupmed-api:1.0 > /dev/null
+
+# Relais des accès de l'API vers le SIEM (indépendant du demarrage du SIEM) :
+# suit les logs du conteneur et les renvoie en local1, deja transmis a Z4 (flux F10).
+cat > /etc/systemd/system/api-logs-siem.service <<'UNIT'
+[Unit]
+Description=Relais des logs de l'API vers le SIEM
+After=docker.service
+Wants=docker.service
+
+[Service]
+ExecStart=/bin/sh -c 'docker logs -f --since 0s startupmed-api 2>&1 | logger -p local1.info -t api'
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload
+systemctl enable --now api-logs-siem
+systemctl restart api-logs-siem
 
 # ---- Raccourcis pour la demo ----------------------------------------------------
 cat > /usr/local/bin/verif-conteneur <<'EOF'
