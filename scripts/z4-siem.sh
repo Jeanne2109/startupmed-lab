@@ -150,7 +150,9 @@ cat > /usr/local/bin/siem-reset <<'SCRIPT'
 # Vide les journaux centralises et le journal d'alertes (demo propre).
 for f in /var/log/central/*.log; do : > "$f" 2>/dev/null; done
 : > /var/log/auth.log 2>/dev/null
-echo "Journaux SIEM remis a zero. Lancez les attaques, puis siem-detect."
+# Vider aussi l'index OpenSearch (le minuteur le recreera au prochain cycle)
+curl -s -X DELETE http://10.10.4.30:9200/startupmed-logs >/dev/null 2>&1 || true
+echo "Journaux SIEM et index OpenSearch remis a zero. Lancez les attaques."
 SCRIPT
 chmod +x /usr/local/bin/siem-reset
 
