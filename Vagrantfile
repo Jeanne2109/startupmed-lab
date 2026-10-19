@@ -133,5 +133,6 @@ Vagrant.configure("2") do |config|
     end
     m.vm.provision "shell", path: "scripts/opensearch.sh"
     m.vm.provision "setup", type: "shell", path: "scripts/opensearch-setup.sh"
+    m.vm.provision "dashboard", type: "shell", path: "scripts/opensearch-dashboard.sh"
   end
 end
