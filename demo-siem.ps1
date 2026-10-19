@@ -2,6 +2,9 @@
 $ErrorActionPreference = 'SilentlyContinue'
 Set-Location $PSScriptRoot
 
+# Synchroniser l'heure des VM (evite les dates decalees apres une veille du PC)
+& "$PSScriptRoot\sync-heure.ps1" | Out-Null
+
 Write-Host ""
 Write-Host "==================== DEMO SIEM StartupMed ====================" -ForegroundColor Cyan
 Write-Host ""
