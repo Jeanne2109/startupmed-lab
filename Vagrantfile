@@ -110,11 +110,28 @@ Vagrant.configure("2") do |config|
     m.vm.provision "sauvegarde", type: "shell", path: "scripts/z4-sauvegarde.sh"
     # SIEM : moteur de detection des 4 scenarios d'attaque
     m.vm.provision "siem", type: "shell", path: "scripts/z4-siem.sh"
+    # BONUS : Fluent Bit envoie les journaux vers OpenSearch
+    m.vm.provision "feed", type: "shell", path: "scripts/z4-opensearch-feed.sh"
   end
 
   # ---- Z5 : Siege — poste salarie -----------------------------------------
   config.vm.define "z5-poste" do |m|
     zone_vm.call(m, "z5-poste", "10.10.5.10", "10.10.5.1", "z5-siege", 512)
     m.vm.provision "shell", path: "scripts/z5-poste.sh"
+  end
+
+  # ---- BONUS : OpenSearch + Dashboards (stockage et visualisation des logs) ----
+  # VM dediee en Z4 (10.10.4.30), accessible depuis le PC en http://192.168.56.30:5601
+  config.vm.define "opensearch" do |m|
+    m.vm.hostname = "opensearch"
+    m.vm.network "private_network", ip: "10.10.4.30", virtualbox__intnet: "z4-admin"
+    m.vm.network "private_network", ip: "192.168.56.30"
+    m.vm.provider "virtualbox" do |vb|
+      vb.memory = 4096
+      vb.cpus = 2
+      vb.name = "startupmed-opensearch"
+    end
+    m.vm.provision "shell", path: "scripts/opensearch.sh"
+    m.vm.provision "setup", type: "shell", path: "scripts/opensearch-setup.sh"
   end
 end
