@@ -123,7 +123,7 @@ echo
 if [ "$alertes" -eq 0 ]; then
   echo "${vert}Aucune alerte sur la periode analysee.${raz}"
 else
-  echo "${rouge}${gras}$alertes alerte(s) - horodatees a l'heure reelle de l'attaque - voir $JOURNAL_ALERTES${raz}"
+  echo "${rouge}${gras}$alertes alerte(s) - voir $JOURNAL_ALERTES${raz}"
 fi
 SCRIPT
 chmod +x /usr/local/bin/siem-detect
