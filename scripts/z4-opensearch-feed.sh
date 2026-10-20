@@ -39,9 +39,12 @@ def classer(msg):
 
 def norm(raw):
     try:
-        return datetime.datetime.fromisoformat(raw).isoformat()
+        dt = datetime.datetime.fromisoformat(raw)
     except Exception:
-        return datetime.datetime.now().astimezone().isoformat()
+        return datetime.datetime.now(datetime.timezone.utc).isoformat()
+    if dt.tzinfo is None:
+        dt = dt.astimezone()  # timestamp sans fuseau -> heure locale de la VM
+    return dt.astimezone(datetime.timezone.utc).isoformat()  # tout en UTC, coherent
 
 # Index avec mapping explicite (dont le champ "attaque")
 mapping = json.dumps({"mappings": {"properties": {
