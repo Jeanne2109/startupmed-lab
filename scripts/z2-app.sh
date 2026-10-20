@@ -24,7 +24,7 @@ chown root:startupmed /etc/startupmed/app.env
 chmod 0640 /etc/startupmed/app.env
 
 cat > /opt/startupmed/app.py <<'EOF'
-"""API de demonstration StartupMed — donnees FICTIVES."""
+"""API de demonstration StartupMed - donnees FICTIVES."""
 import html
 import os
 
@@ -65,7 +65,7 @@ def accueil():
     return (
         "<!doctype html><meta charset='utf-8'><title>StartupMed</title>"
         "<body style='font-family:sans-serif;max-width:720px;margin:40px auto'>"
-        "<h1>StartupMed — plateforme de demo</h1>"
+        "<h1>StartupMed - plateforme de demo</h1>"
         "<p>Chemin : Internet → pare-feu F1 → WAF (Z1) → F2 → API (Z2) → F3 → PostgreSQL (Z3)</p>"
         "<table border='1' cellpadding='6' style='border-collapse:collapse'>"
         "<tr><th>#</th><th>Nom</th><th>Prenom</th><th>Motif</th></tr>"
