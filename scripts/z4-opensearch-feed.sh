@@ -37,6 +37,12 @@ def classer(msg):
             return label
     return "normal"
 
+CRITICITE = {
+    "brute_force": "CRITIQUE", "exfiltration": "CRITIQUE", "rdp_externe": "CRITIQUE",
+    "elevation_privilege": "CRITIQUE", "injection_sql": "HAUTE",
+    "acces_api": "INFO", "normal": "INFO",
+}
+
 def norm(raw):
     try:
         dt = datetime.datetime.fromisoformat(raw)
@@ -50,7 +56,7 @@ def norm(raw):
 mapping = json.dumps({"mappings": {"properties": {
     "@timestamp": {"type": "date"}, "message": {"type": "text"},
     "source": {"type": "keyword"}, "type": {"type": "keyword"},
-    "attaque": {"type": "keyword"}}}}).encode()
+    "attaque": {"type": "keyword"}, "criticite": {"type": "keyword"}}}}).encode()
 try:
     urllib.request.urlopen(urllib.request.Request(
         f"{OS_URL}/{INDEX}", data=mapping, method="PUT",
@@ -72,8 +78,10 @@ for f in sorted(glob.glob('/var/log/central/*.log')) + ['/var/log/auth.log']:
             typ = "alerte" if src == "ALERTES.log" else "log"
             _id = hashlib.md5((src + "|" + line).encode()).hexdigest()
             bulk.append(json.dumps({"index": {"_id": _id}}))
+            att = classer(line)
             bulk.append(json.dumps({"@timestamp": t, "message": line,
-                                    "source": src, "type": typ, "attaque": classer(line)}))
+                                    "source": src, "type": typ, "attaque": att,
+                                    "criticite": CRITICITE.get(att, "INFO")}))
     except Exception:
         pass
 
